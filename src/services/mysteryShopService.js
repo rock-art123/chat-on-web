@@ -75,7 +75,7 @@ const MYSTERY_REWARDS = [
     name: "精美头像框",
     description: "获得精美头像框3天使用权",
     duration: 3, // 天数
-    probability: 0.10, // 6%概率
+    probability: 0.08, // 6%概率
     type: "avatar_frame"
   },
   {
@@ -83,7 +83,7 @@ const MYSTERY_REWARDS = [
     name: "登录出场炫酷动画",
     description: "获得登录出场炫酷动画3天使用权",
     duration: 3, // 天数
-    probability: 0.10, // 8%概率
+    probability: 0.08, // 8%概率
     type: "entrance_animation"
   },
   {
@@ -91,7 +91,7 @@ const MYSTERY_REWARDS = [
     name: "200积分",
     description: "获得200积分奖励",
     points: 200,
-    probability: 0.25, // 20%概率
+    probability: 0.15, // 20%概率
     type: "points_reward"
   },
   {
@@ -99,7 +99,7 @@ const MYSTERY_REWARDS = [
     name: "500积分",
     description: "获得500积分奖励",
     points: 500,
-    probability: 0.10, // 15%概率
+    probability: 0.05, // 15%概率
     type: "points_reward"
   },
   {
@@ -107,7 +107,7 @@ const MYSTERY_REWARDS = [
     name: "1000积分",
     description: "获得1000积分奖励",
     points: 1000,
-    probability: 0.08, // 10%概率
+    probability: 0.02, // 10%概率
     type: "points_reward"
   },
   {
