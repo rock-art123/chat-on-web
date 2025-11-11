@@ -251,6 +251,143 @@ staticApp.post('/api/ai-config', (req, res) => {
   }
 });
 
+// 本地API处理器 - 处理用户积分更新
+staticApp.post('/api/user-points', (req, res) => {
+  try {
+    // 使用Express的JSON解析中间件已经解析了请求体
+    const data = req.body;
+    console.log('接收到的用户积分更新请求:', data);
+    
+    const http = require(serverUrl.startsWith('https') ? 'https' : 'http');
+    
+    // 构建请求选项
+    const url = new URL(serverUrl);
+    const requestBody = JSON.stringify(data);
+    const options = {
+      hostname: url.hostname,
+      port: url.port || (serverUrl.startsWith('https') ? 443 : 80),
+      path: '/api/user-points',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(requestBody)
+      }
+    };
+    
+    // 如果原始请求有用户ID，则传递给服务器
+    if (req.headers['x-user-id']) {
+      options.headers['x-user-id'] = req.headers['x-user-id'];
+    }
+    
+    if (req.headers['x-core-id']) {
+      options.headers['x-core-id'] = req.headers['x-core-id'];
+    }
+    
+    // 发送HTTP请求到服务器
+    const proxyReq = http.request(options, (proxyRes) => {
+      let responseData = '';
+      
+      proxyRes.on('data', (chunk) => {
+        responseData += chunk;
+      });
+      
+      proxyRes.on('end', () => {
+        try {
+          // 将服务器的响应直接返回给客户端
+          const response = JSON.parse(responseData);
+          console.log('服务器用户积分更新响应:', response);
+          res.status(proxyRes.statusCode).json(response);
+        } catch (error) {
+          console.error('解析服务器响应失败:', error);
+          res.status(500).json({
+            success: false,
+            message: '解析服务器响应失败'
+          });
+        }
+      });
+    });
+    
+    proxyReq.on('error', (error) => {
+      console.error('请求服务器更新用户积分失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '无法连接到服务器更新用户积分'
+      });
+    });
+    
+    // 发送请求体
+    proxyReq.write(requestBody);
+    proxyReq.end();
+  } catch (error) {
+    console.error('更新用户积分失败:', error);
+    res.status(500).json({ success: false, message: '更新积分失败' });
+  }
+});
+
+// 本地API处理器 - 处理用户积分获取
+staticApp.get('/api/user-points', (req, res) => {
+  try {
+    // 从服务器获取用户积分
+    const http = require(serverUrl.startsWith('https') ? 'https' : 'http');
+    
+    // 构建请求选项
+    const url = new URL(serverUrl);
+    const options = {
+      hostname: url.hostname,
+      port: url.port || (serverUrl.startsWith('https') ? 443 : 80),
+      path: '/api/user-points',
+      method: 'GET',
+      headers: {}
+    };
+    
+    // 如果原始请求有用户ID，则传递给服务器
+    if (req.headers['x-user-id']) {
+      options.headers['x-user-id'] = req.headers['x-user-id'];
+    }
+    
+    if (req.headers['x-core-id']) {
+      options.headers['x-core-id'] = req.headers['x-core-id'];
+    }
+    
+    // 发送HTTP请求到服务器
+    const proxyReq = http.request(options, (proxyRes) => {
+      let responseData = '';
+      
+      proxyRes.on('data', (chunk) => {
+        responseData += chunk;
+      });
+      
+      proxyRes.on('end', () => {
+        try {
+          // 将服务器的响应直接返回给客户端
+          const response = JSON.parse(responseData);
+          console.log('从服务器获取的用户积分:', response);
+          res.status(proxyRes.statusCode).json(response);
+        } catch (error) {
+          console.error('解析服务器响应失败:', error);
+          res.status(500).json({
+            success: false,
+            message: '解析服务器响应失败'
+          });
+        }
+      });
+    });
+    
+    proxyReq.on('error', (error) => {
+      console.error('请求服务器获取用户积分失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '无法连接到服务器获取用户积分'
+      });
+    });
+    
+    proxyReq.end();
+  } catch (error) {
+    console.error('获取用户积分失败:', error);
+    res.status(500).json({ success: false, message: '获取积分失败' });
+  }
+});
+
 staticApp.use('/api', createProxyMiddleware({
   target: serverUrl,
   changeOrigin: true,
@@ -393,7 +530,7 @@ function createWindow() {
   });
 
   // 移除应用程序菜单栏，这样就不会显示file、edit、view/window等工具条
-  Menu.setApplicationMenu(null);
+  // Menu.setApplicationMenu(null);
 
   // 修改关闭按钮行为，使其最小化到托盘而不是关闭
   mainWindow.on('close', function(e) {

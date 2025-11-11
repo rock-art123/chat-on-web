@@ -1,18 +1,3 @@
 {
-  "core_1761702753977_2xrjgi6ek": {
-    "coreId": "core_1761702753977_2xrjgi6ek",
-    "points": 120,
-    "createdAt": "2025-10-29T06:15:32.474Z",
-    "lastDailyClaim": "2025-10-30T03:42:53.501Z",
-    "onlineMinutes": 60,
-    "updatedAt": "2025-10-30T08:08:30.814Z"
-  },
-  "core_1761719284869_bixc1hwgc": {
-    "coreId": "core_1761719284869_bixc1hwgc",
-    "points": 0,
-    "createdAt": "2025-10-29T06:28:05.880Z",
-    "lastDailyClaim": null,
-    "onlineMinutes": 0,
-    "updatedAt": "2025-10-29T06:46:19.844Z"
-  }
+  
 }
