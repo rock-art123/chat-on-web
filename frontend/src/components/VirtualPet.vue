@@ -9,7 +9,13 @@
         {{ mentionMessage }}
       </div>
       <div v-if="showSvipMessage" class="pet-bubble svip-bubble" :style="svipMessageStyle" @click.stop="hideSvipMessage">
-        {{ svipMessage }}
+        <div class="svip-particles">
+          <div class="svip-particle" v-for="i in 8" :key="i" :style="getParticleStyle(i)"></div>
+        </div>
+        <div class="svip-content">
+          <div class="svip-icon">♛</div>
+          <div class="svip-text" v-html="svipMessage"></div>
+        </div>
       </div>
       <div v-if="showPointsAnimation" class="points-animation">
         +{{ pointsEarned }}
@@ -536,8 +542,8 @@ function showSvipMessageBubble(username, content) {
     clearTimeout(svipTimeout);
   }
   
-  // 设置SVIP消息，包含具体消息内容
-  svipMessage.value = `尊贵的SVIP用户${username}说：${content}`;
+  // 设置SVIP消息，包含具体消息内容和图标
+  svipMessage.value = `<span class="svip-icon">♛</span>尊贵的SVIP用户${username}说：${content}`;
   showSvipMessage.value = true;
   console.log('VirtualPet: showSvipMessage设置为true');
   
@@ -545,8 +551,8 @@ function showSvipMessageBubble(username, content) {
   setTimeout(() => {
     if (petElement.value) {
       const petRect = petElement.value.getBoundingClientRect();
-      const bubbleWidth = 240; // 预估气泡宽度，比普通气泡稍宽
-      const bubbleHeight = 60; // 预估气泡高度
+      const bubbleWidth = 280; // 调整为新的最大宽度
+      const bubbleHeight = 70; // 调整高度以适应新的内边距
       
       let left = -bubbleWidth / 2 + 40; // 默认居中偏左
       let bottom = 120; // 默认在宠物上方，比提及气泡稍高
@@ -571,11 +577,32 @@ function showSvipMessageBubble(username, content) {
   
   // 不播放提示音，只显示气泡
   
-  // 8秒后自动隐藏气泡
+  // 5秒后自动隐藏气泡
   svipTimeout = setTimeout(() => {
     showSvipMessage.value = false;
     console.log('VirtualPet: SVIP气泡自动隐藏');
-  }, 8000);
+  }, 5000);
+}
+
+// 生成粒子样式
+function getParticleStyle(index) {
+  // 将8个粒子均匀分布在气泡周围
+  const angle = (index / 8) * Math.PI * 2;
+  const radius = 15; // 固定半径，使粒子更集中
+  
+  // 计算位置
+  const x = Math.cos(angle) * radius;
+  const y = Math.sin(angle) * radius;
+  
+  // 随机动画参数
+  const duration = 1.5 + Math.random() * 1; // 1.5-2.5秒的动画时长
+  const delay = Math.random() * 0.5; // 0-0.5秒的随机延迟
+  
+  return {
+    left: `calc(50% + ${x}px)`,
+    top: `calc(50% + ${y}px)`,
+    animation: `svip-particle-float ${duration}s ${delay}s infinite ease-in-out`
+  };
 }
 
 // 处理宠物点击
@@ -824,37 +851,73 @@ onUnmounted(() => {
 }
 
 .svip-bubble {
-  background: linear-gradient(135deg, #9333ea, #a855f7, #c084fc);
-  color: #fff;
-  border: 1px solid rgba(147, 51, 234, 0.3);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+  color: #1e293b;
+  border: 2px solid #fbbf24;
   cursor: pointer;
-  max-width: 240px;
-  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
+  max-width: 280px;
+  min-width: 200px;
+  padding: 14px 18px;
+  box-shadow: 
+    0 8px 20px rgba(251, 191, 36, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.1);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  font-weight: 600;
+  border-radius: 16px;
+  z-index: 1002;
+  transform: translateY(0);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.svip-bubble::before {
-  content: '';
+.svip-bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 24px rgba(251, 191, 36, 0.3),
+    0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.svip-particles {
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  animation: svip-bubble-shine 3s infinite;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  pointer-events: none;
+  z-index: -1;
 }
 
-@keyframes svip-bubble-shine {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
+.svip-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #fbbf24;
+  border-radius: 50%;
+  opacity: 0.6;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.8);
 }
 
-.pet-bubble::after {
+.svip-content {
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.svip-icon {
+  font-size: 20px;
+  margin-right: 8px;
+  color: #f59e0b;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  flex-shrink: 0;
+}
+
+.svip-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.svip-bubble::after {
   content: '';
   position: absolute;
   bottom: -10px;
@@ -862,7 +925,23 @@ onUnmounted(() => {
   transform: translateX(-50%);
   border-width: 10px 10px 0;
   border-style: solid;
-  border-color: white transparent transparent;
+  border-color: #fbbf24 transparent transparent;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+@keyframes svip-particle-float {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+  }
 }
 
 .points-animation {

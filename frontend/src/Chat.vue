@@ -1208,6 +1208,8 @@ export default {
         // 显示抽取结果
         if (data.reward && data.reward.type === 'avatar_frame') {
           ElMessage.success(`恭喜您获得了精美头像框！有效期3天`);
+        } else if (data.reward && data.reward.type === 'svip') {
+          ElMessage.success(`恭喜您获得了SVIP特权！有效期3天`);
         } else if (data.reward && data.reward.type === 'entrance_animation') {
           ElMessage.success(`恭喜您获得了登录出场炫酷动画！有效期3天`);
         } else if (data.reward && data.reward.type === 'points_reward') {

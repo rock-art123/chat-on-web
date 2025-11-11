@@ -81,8 +81,8 @@ const MYSTERY_REWARDS = [
   {
     id: "svip",
     name: "SVIP特权",
-    description: "获得SVIP特权7天使用权",
-    duration: 7, // 天数
+    description: "获得SVIP特权3天使用权",
+    duration: 3, // 天数
     probability: 0.08, // 8%概率
     type: "svip"
   },
@@ -127,171 +127,227 @@ const MYSTERY_REWARDS = [
   }
 ];
 
+// 计算总概率，用于验证
+const TOTAL_PROBABILITY = MYSTERY_REWARDS.reduce((sum, reward) => sum + reward.probability, 0);
+console.log(`神秘商店总概率: ${TOTAL_PROBABILITY * 100}% (未中奖概率: ${(1 - TOTAL_PROBABILITY) * 100}%)`);
+
 // 处理奖励的函数
 function processReward(coreId, reward) {
-  // 处理黑色炸弹
-  if (reward.type === "punishment") {
-    // 扣除额外200积分（黑色炸弹）
-    const currentPoints = getUserPoints(coreId);
-    const pointsToDeduct = Math.min(200, currentPoints);
-    const bombPointsDeducted = reduceUserPoints(coreId, pointsToDeduct);
+  console.log(`[MYSTERY_SHOP] 开始处理奖励:`, { coreId, rewardType: reward.name, rewardId: reward.id });
+  
+  try {
+    // 处理黑色炸弹
+    if (reward.type === "punishment") {
+      console.log(`[MYSTERY_SHOP] 处理黑色炸弹奖励:`, { coreId });
+      // 扣除额外200积分（黑色炸弹）
+      const currentPoints = getUserPoints(coreId);
+      const pointsToDeduct = Math.min(200, currentPoints);
+      const bombPointsDeducted = reduceUserPoints(coreId, pointsToDeduct);
+      
+      if (bombPointsDeducted) {
+        console.log(`[MYSTERY_SHOP] 黑色炸弹处理成功:`, { coreId, pointsDeducted: pointsToDeduct });
+        return {
+          success: true,
+          reward: {
+            ...reward,
+            pointsLost: pointsToDeduct
+          },
+          message: `很遗憾，您抽中了黑色炸弹，损失了${pointsToDeduct}积分`
+        };
+      } else {
+        console.error(`[MYSTERY_SHOP] 黑色炸弹处理失败:`, { coreId, currentPoints, pointsToDeduct });
+        // 如果扣除失败，退还之前扣除的100积分
+        addUserPoints(coreId, 100);
+        return {
+          success: false,
+          message: "积分处理失败，已退还抽取费用"
+        };
+      }
+    }
     
-    if (bombPointsDeducted) {
+    // 处理SVIP特权
+    if (reward.type === "svip") {
+      console.log(`[MYSTERY_SHOP] 处理SVIP特权奖励:`, { coreId, duration: reward.duration });
+      // 获取用户当前神秘商店数据
+      const userMysteryData = getUserMysteryData(coreId) || {};
+      const currentSvip = userMysteryData.svip || {};
+      
+      // 计算新的过期时间
+      const now = new Date();
+      let newExpiryDate = new Date();
+      newExpiryDate.setDate(now.getDate() + reward.duration);
+      
+      // 如果已有SVIP且未过期，则累加天数
+      if (currentSvip.expiryDate && new Date(currentSvip.expiryDate) > now) {
+        const currentExpiry = new Date(currentSvip.expiryDate);
+        newExpiryDate = new Date(currentExpiry.getTime() + reward.duration * 24 * 60 * 60 * 1000);
+      }
+      
+      // 更新用户SVIP数据
+      const updateResult = updateUserMysteryData(coreId, {
+        svip: {
+          hasSvip: true,
+          expiryDate: newExpiryDate.toISOString(),
+          type: "mystery_shop"
+        }
+      });
+      
+      if (!updateResult) {
+        console.error(`[MYSTERY_SHOP] SVIP数据更新失败:`, { coreId });
+        addUserPoints(coreId, 100);
+        return {
+          success: false,
+          message: "SVIP数据处理失败，已退还抽取费用"
+        };
+      }
+      
+      console.log(`[MYSTERY_SHOP] SVIP特权处理成功:`, { coreId, expiryDate: newExpiryDate.toISOString() });
       return {
         success: true,
         reward: {
           ...reward,
-          pointsLost: pointsToDeduct
+          expiryDate: newExpiryDate.toISOString()
         },
-        message: `很遗憾，您抽中了黑色炸弹，损失了${pointsToDeduct}积分`
-      };
-    } else {
-      // 如果扣除失败，退还之前扣除的100积分
-      addUserPoints(coreId, 100);
-      return {
-        success: false,
-        message: "积分处理失败，已退还抽取费用"
+        message: `恭喜！您抽中了SVIP特权，有效期至${newExpiryDate.toLocaleDateString()}`
       };
     }
-  }
-  
-  // 处理SVIP特权
-  if (reward.type === "svip") {
-    // 获取用户当前神秘商店数据
-    const userMysteryData = getUserMysteryData(coreId) || {};
-    const currentSvip = userMysteryData.svip || {};
     
-    // 计算新的过期时间
-    const now = new Date();
-    let newExpiryDate = new Date();
-    newExpiryDate.setDate(now.getDate() + reward.duration);
-    
-    // 如果已有SVIP且未过期，则累加天数
-    if (currentSvip.expiryDate && new Date(currentSvip.expiryDate) > now) {
-      const currentExpiry = new Date(currentSvip.expiryDate);
-      newExpiryDate = new Date(currentExpiry.getTime() + reward.duration * 24 * 60 * 60 * 1000);
-    }
-    
-    // 更新用户SVIP数据
-    updateUserMysteryData(coreId, {
-      svip: {
-        hasSvip: true,
-        expiryDate: newExpiryDate.toISOString(),
-        type: "mystery_shop"
+    // 处理头像框
+    if (reward.type === "avatar_frame") {
+      console.log(`[MYSTERY_SHOP] 处理头像框奖励:`, { coreId, duration: reward.duration });
+      // 获取用户当前神秘商店数据
+      const userMysteryData = getUserMysteryData(coreId) || {};
+      const currentAvatarFrame = userMysteryData.avatarFrame || {};
+      
+      // 计算新的过期时间
+      const now = new Date();
+      let newExpiryDate = new Date();
+      newExpiryDate.setDate(now.getDate() + reward.duration);
+      
+      // 如果已有头像框且未过期，则累加天数
+      if (currentAvatarFrame.expiryDate && new Date(currentAvatarFrame.expiryDate) > now) {
+        const currentExpiry = new Date(currentAvatarFrame.expiryDate);
+        newExpiryDate = new Date(currentExpiry.getTime() + reward.duration * 24 * 60 * 60 * 1000);
       }
-    });
-    
-    return {
-      success: true,
-      reward: {
-        ...reward,
-        expiryDate: newExpiryDate.toISOString()
-      },
-      message: `恭喜！您抽中了SVIP特权，有效期至${newExpiryDate.toLocaleDateString()}`
-    };
-  }
-  
-  // 处理头像框
-  if (reward.type === "avatar_frame") {
-    // 获取用户当前神秘商店数据
-    const userMysteryData = getUserMysteryData(coreId) || {};
-    const currentAvatarFrame = userMysteryData.avatarFrame || {};
-    
-    // 计算新的过期时间
-    const now = new Date();
-    let newExpiryDate = new Date();
-    newExpiryDate.setDate(now.getDate() + reward.duration);
-    
-    // 如果已有头像框且未过期，则累加天数
-    if (currentAvatarFrame.expiryDate && new Date(currentAvatarFrame.expiryDate) > now) {
-      const currentExpiry = new Date(currentAvatarFrame.expiryDate);
-      newExpiryDate = new Date(currentExpiry.getTime() + reward.duration * 24 * 60 * 60 * 1000);
-    }
-    
-    // 更新用户头像框数据
-    updateUserMysteryData(coreId, {
-      avatarFrame: {
-        hasAvatarFrame: true,
-        expiryDate: newExpiryDate.toISOString(),
-        type: "mystery_shop"
+      
+      // 更新用户头像框数据
+      const updateResult = updateUserMysteryData(coreId, {
+        avatarFrame: {
+          hasAvatarFrame: true,
+          expiryDate: newExpiryDate.toISOString(),
+          type: "mystery_shop"
+        }
+      });
+      
+      if (!updateResult) {
+        console.error(`[MYSTERY_SHOP] 头像框数据更新失败:`, { coreId });
+        addUserPoints(coreId, 100);
+        return {
+          success: false,
+          message: "头像框数据处理失败，已退还抽取费用"
+        };
       }
-    });
-    
-    return {
-      success: true,
-      reward: {
-        ...reward,
-        expiryDate: newExpiryDate.toISOString()
-      },
-      message: `恭喜！您抽中了精美头像框，有效期至${newExpiryDate.toLocaleDateString()}`
-    };
-  }
-  
-  // 处理出场动画
-  if (reward.type === "entrance_animation") {
-    // 获取用户当前神秘商店数据
-    const userMysteryData = getUserMysteryData(coreId) || {};
-    const currentEntranceAnimation = userMysteryData.entranceAnimation || {};
-    
-    // 计算新的过期时间
-    const now = new Date();
-    let newExpiryDate = new Date();
-    newExpiryDate.setDate(now.getDate() + reward.duration);
-    
-    // 如果已有出场动画且未过期，则累加天数
-    if (currentEntranceAnimation.expiryDate && new Date(currentEntranceAnimation.expiryDate) > now) {
-      const currentExpiry = new Date(currentEntranceAnimation.expiryDate);
-      newExpiryDate = new Date(currentExpiry.getTime() + reward.duration * 24 * 60 * 60 * 1000);
-    }
-    
-    // 更新用户出场动画数据
-    updateUserMysteryData(coreId, {
-      entranceAnimation: {
-        hasEntranceAnimation: true,
-        expiryDate: newExpiryDate.toISOString(),
-        type: "mystery_shop"
-      }
-    });
-    
-    return {
-      success: true,
-      reward: {
-        ...reward,
-        expiryDate: newExpiryDate.toISOString()
-      },
-      message: `恭喜！您抽中了登录出场炫酷动画，有效期至${newExpiryDate.toLocaleDateString()}`
-    };
-  }
-  
-  // 处理积分奖励
-  if (reward.type === "points_reward") {
-    // 增加用户积分
-    const pointsAdded = addUserPoints(coreId, reward.points);
-    
-    if (pointsAdded) {
+      
+      console.log(`[MYSTERY_SHOP] 头像框处理成功:`, { coreId, expiryDate: newExpiryDate.toISOString() });
       return {
         success: true,
         reward: {
           ...reward,
-          pointsAwarded: reward.points
+          expiryDate: newExpiryDate.toISOString()
         },
-        message: `恭喜！您抽中了${reward.points}积分奖励`
-      };
-    } else {
-      // 如果积分添加失败，退还之前扣除的100积分
-      addUserPoints(coreId, 100);
-      return {
-        success: false,
-        message: "积分处理失败，已退还抽取费用"
+        message: `恭喜！您抽中了精美头像框，有效期至${newExpiryDate.toLocaleDateString()}`
       };
     }
+    
+    // 处理出场动画
+    if (reward.type === "entrance_animation") {
+      console.log(`[MYSTERY_SHOP] 处理出场动画奖励:`, { coreId, duration: reward.duration });
+      // 获取用户当前神秘商店数据
+      const userMysteryData = getUserMysteryData(coreId) || {};
+      const currentEntranceAnimation = userMysteryData.entranceAnimation || {};
+      
+      // 计算新的过期时间
+      const now = new Date();
+      let newExpiryDate = new Date();
+      newExpiryDate.setDate(now.getDate() + reward.duration);
+      
+      // 如果已有出场动画且未过期，则累加天数
+      if (currentEntranceAnimation.expiryDate && new Date(currentEntranceAnimation.expiryDate) > now) {
+        const currentExpiry = new Date(currentEntranceAnimation.expiryDate);
+        newExpiryDate = new Date(currentExpiry.getTime() + reward.duration * 24 * 60 * 60 * 1000);
+      }
+      
+      // 更新用户出场动画数据
+      const updateResult = updateUserMysteryData(coreId, {
+        entranceAnimation: {
+          hasEntranceAnimation: true,
+          expiryDate: newExpiryDate.toISOString(),
+          type: "mystery_shop"
+        }
+      });
+      
+      if (!updateResult) {
+        console.error(`[MYSTERY_SHOP] 出场动画数据更新失败:`, { coreId });
+        addUserPoints(coreId, 100);
+        return {
+          success: false,
+          message: "出场动画数据处理失败，已退还抽取费用"
+        };
+      }
+      
+      console.log(`[MYSTERY_SHOP] 出场动画处理成功:`, { coreId, expiryDate: newExpiryDate.toISOString() });
+      return {
+        success: true,
+        reward: {
+          ...reward,
+          expiryDate: newExpiryDate.toISOString()
+        },
+        message: `恭喜！您抽中了登录出场炫酷动画，有效期至${newExpiryDate.toLocaleDateString()}`
+      };
+    }
+    
+    // 处理积分奖励
+    if (reward.type === "points_reward") {
+      console.log(`[MYSTERY_SHOP] 处理积分奖励:`, { coreId, points: reward.points });
+      // 增加用户积分
+      const pointsAdded = addUserPoints(coreId, reward.points);
+      
+      if (pointsAdded) {
+        console.log(`[MYSTERY_SHOP] 积分奖励处理成功:`, { coreId, pointsAwarded: reward.points });
+        return {
+          success: true,
+          reward: {
+            ...reward,
+            pointsAwarded: reward.points
+          },
+          message: `恭喜！您抽中了${reward.points}积分奖励`
+        };
+      } else {
+        console.error(`[MYSTERY_SHOP] 积分奖励处理失败:`, { coreId, points: reward.points });
+        // 如果积分添加失败，退还之前扣除的100积分
+        addUserPoints(coreId, 100);
+        return {
+          success: false,
+          message: "积分处理失败，已退还抽取费用"
+        };
+      }
+    }
+    
+    // 未知奖励类型
+    console.error(`[MYSTERY_SHOP] 未知奖励类型:`, { coreId, rewardType: reward.type });
+    return {
+      success: false,
+      message: "未知的奖励类型"
+    };
+  } catch (error) {
+    console.error(`[MYSTERY_SHOP] 处理奖励时发生错误:`, { coreId, rewardType: reward.name, error: error.message, stack: error.stack });
+    // 如果发生错误，退还之前扣除的100积分
+    addUserPoints(coreId, 100);
+    return {
+      success: false,
+      message: `处理奖励时发生错误: ${error.message}`
+    };
   }
-  
-  // 未知奖励类型
-  return {
-    success: false,
-    message: "未知的奖励类型"
-  };
 }
 
 // 抽取神秘礼物
@@ -309,6 +365,7 @@ function drawMysteryReward(coreId) {
   // 检查用户积分是否足够
   const userPoints = getUserPoints(coreId);
   if (userPoints < 100) {
+    console.log(`[MYSTERY_SHOP] 用户积分不足:`, { coreId, userPoints });
     return {
       success: false,
       message: "积分不足，需要100积分才能抽取神秘礼物"
@@ -318,27 +375,42 @@ function drawMysteryReward(coreId) {
   // 扣除100积分
   const pointsDeducted = reduceUserPoints(coreId, 100);
   if (!pointsDeducted) {
+    console.error(`[MYSTERY_SHOP] 积分扣除失败:`, { coreId, userPoints });
     return {
       success: false,
       message: "积分扣除失败"
     };
   }
   
-  // 按照概率从高到低排序奖励
-  const sortedRewards = [...MYSTERY_REWARDS].sort((a, b) => b.probability - a.probability);
+  console.log(`[MYSTERY_SHOP] 积分扣除成功:`, { coreId, deductedPoints: 100, remainingPoints: getUserPoints(coreId) });
   
-  // 对每个奖励进行独立的概率判断
-  for (const rewardType of sortedRewards) {
-    const random = Math.random(); // 生成0-1之间的随机数
+  // 使用正确的概率算法
+  const random = Math.random(); // 生成0-1之间的随机数
+  let cumulativeProbability = 0;
+  
+  console.log(`[MYSTERY_SHOP] 抽奖随机数:`, { coreId, random });
+  
+  // 计算累积概率并判断中奖
+  for (const rewardType of MYSTERY_REWARDS) {
+    cumulativeProbability += rewardType.probability;
+    console.log(`[MYSTERY_SHOP] 检查奖励:`, { 
+      coreId, 
+      rewardType: rewardType.name, 
+      probability: rewardType.probability, 
+      cumulativeProbability,
+      random,
+      result: random < cumulativeProbability ? '中奖' : '未中'
+    });
     
-    // 如果随机数小于该奖励的概率，则中该奖励
-    if (random < rewardType.probability) {
-      // 确保不会同时中多个奖励
+    if (random < cumulativeProbability) {
+      // 中奖了，处理奖励
+      console.log(`[MYSTERY_SHOP] 用户中奖:`, { coreId, rewardType: rewardType.name });
       return processReward(coreId, rewardType);
     }
   }
   
   // 如果没有中任何奖励，返回未中奖
+  console.log(`[MYSTERY_SHOP] 用户未中奖:`, { coreId, random });
   return {
     success: true,
     reward: null,

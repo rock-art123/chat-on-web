@@ -1094,12 +1094,14 @@ module.exports = (io) => {
           const userPoints = user.coreId ? getUserPoints(user.coreId) : 0;
           const userHasAvatarFrame = user.coreId ? hasAvatarFrame(user.coreId) : false;
           const userHasEntranceAnimation = user.coreId ? hasEntranceAnimation(user.coreId) : false;
+          const userHasSvip = user.coreId ? hasSvip(user.coreId) : false;
           
           return {
             ...user,
             points: userPoints,
             hasAvatarFrame: userHasAvatarFrame,
-            hasEntranceAnimation: userHasEntranceAnimation
+            hasEntranceAnimation: userHasEntranceAnimation,
+            hasSvip: userHasSvip
           };
         });
         
@@ -1120,8 +1122,8 @@ module.exports = (io) => {
           addedPoints: addedPoints
         });
         
-        // 如果抽中了头像框或动画，广播特殊通知
-        if (result.reward && (result.reward.type === "avatar_frame" || result.reward.type === "entrance_animation")) {
+        // 如果抽中了头像框、动画或SVIP特权，广播特殊通知
+        if (result.reward && (result.reward.type === "avatar_frame" || result.reward.type === "entrance_animation" || result.reward.type === "svip")) {
           io.emit("special_reward_notification", {
             userId: userId,
             username: userInfo.nickname || userInfo.username,
