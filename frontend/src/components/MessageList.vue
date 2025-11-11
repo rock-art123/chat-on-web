@@ -187,6 +187,9 @@
             @open-details="(redPacketId) => $emit('openRedPacket', redPacketId)"
           ></RedPacketMessage>
         </div>
+        <div v-if="hasSvip(message)" class="svip-message-tail">
+          <span class="svip-tail-text">来自尊贵的SVIP用户</span>
+        </div>
         <div class="message-time">{{ formatTime(message.timestamp) }}</div>
       </div>
     </div>
@@ -383,6 +386,17 @@ export default {
       return message.hasAvatarFrame === true;
     };
 
+    // 判断用户是否有SVIP特权
+    const hasSvip = (message) => {
+      // 如果是当前用户的消息，检查mysteryShopInfo中的hasSvip
+      if (message.userId === props.currentUserId || 
+          (!message.userId && message.username === props.currentUsername)) {
+        return props.mysteryShopInfo?.hasSvip || false;
+      }
+      // 对于其他用户，检查消息对象中是否有hasSvip属性
+      return message.hasSvip === true;
+    };
+
     // 处理消息右键点击事件
     const handleMessageContextMenu = (message) => {
       event.preventDefault();
@@ -465,6 +479,7 @@ export default {
       getFullImageUrl,
       isElectron,
       hasAvatarFrame,
+      hasSvip,
     };
   },
 };
@@ -862,5 +877,111 @@ export default {
 }
 .message-item.star .message-time {
   color: #ffb400;
+}
+
+/* SVIP小尾巴样式 */
+.svip-tail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #9333ea, #a855f7, #c084fc);
+  border-radius: 10px;
+  position: relative;
+  box-shadow: 
+    0 0 6px rgba(147, 51, 234, 0.6),
+    0 0 12px rgba(147, 51, 234, 0.3);
+  animation: svip-tail-glow 2s ease-in-out infinite;
+  z-index: 1;
+}
+
+/* SVIP消息小尾巴样式 */
+.svip-message-tail {
+  margin-top: 4px;
+  margin-bottom: 2px;
+  text-align: right;
+  padding-right: 5px;
+}
+
+.svip-tail-text {
+  display: inline-block;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #9333ea, #a855f7, #c084fc);
+  border-radius: 12px;
+  position: relative;
+  box-shadow: 
+    0 0 10px rgba(147, 51, 234, 0.6),
+    0 0 20px rgba(147, 51, 234, 0.3),
+    inset 0 0 10px rgba(255, 255, 255, 0.2);
+  animation: svip-tail-glow 2s ease-in-out infinite;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+/* SVIP小尾巴装饰元素 */
+.svip-tail-text::before {
+  content: '✨';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  animation: svip-tail-sparkle 1.5s ease-in-out infinite;
+}
+
+.svip-tail-text::after {
+  content: '✨';
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  animation: svip-tail-sparkle 1.5s ease-in-out infinite reverse;
+}
+
+/* 暗黑模式下的SVIP小尾巴 */
+.theme-dark .svip-tail {
+  background: linear-gradient(135deg, #7c3aed, #8b5cf6, #a78bfa);
+  box-shadow: 
+    0 0 8px rgba(124, 58, 237, 0.8),
+    0 0 16px rgba(124, 58, 237, 0.4);
+}
+
+.theme-dark .svip-tail-text {
+  background: linear-gradient(135deg, #7c3aed, #8b5cf6, #a78bfa);
+  box-shadow: 
+    0 0 12px rgba(124, 58, 237, 0.8),
+    0 0 24px rgba(124, 58, 237, 0.4),
+    inset 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+/* SVIP小尾巴动画 */
+@keyframes svip-tail-glow {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes svip-tail-sparkle {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.2);
+  }
 }
 </style>

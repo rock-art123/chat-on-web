@@ -28,6 +28,7 @@ const {
   drawMysteryReward,
   hasAvatarFrame,
   hasEntranceAnimation,
+  hasSvip,
   getUserMysteryShopInfo
 } = require('../services/mysteryShopService');
 
@@ -72,9 +73,16 @@ module.exports = (io) => {
             const userInfo = userInfoMap.get(uid) || { userId: uid, username: null };
             // 获取每个用户的最新积分信息
             const userPoints = userInfo.coreId ? getUserPoints(userInfo.coreId) : 0;
+            const userHasAvatarFrame = userInfo.coreId ? hasAvatarFrame(userInfo.coreId) : false;
+            const userHasEntranceAnimation = userInfo.coreId ? hasEntranceAnimation(userInfo.coreId) : false;
+            const userHasSvip = userInfo.coreId ? hasSvip(userInfo.coreId) : false;
+            
             return {
               ...userInfo,
-              points: userPoints
+              points: userPoints,
+              hasAvatarFrame: userHasAvatarFrame,
+              hasEntranceAnimation: userHasEntranceAnimation,
+              hasSvip: userHasSvip
             };
           });
           
@@ -219,11 +227,14 @@ module.exports = (io) => {
         // 获取用户的头像框和动画信息
         const userHasAvatarFrame = userInfo.coreId ? hasAvatarFrame(userInfo.coreId) : false;
         const userHasEntranceAnimation = userInfo.coreId ? hasEntranceAnimation(userInfo.coreId) : false;
+        const userHasSvip = userInfo.coreId ? hasSvip(userInfo.coreId) : false;
+        
         return {
           ...userInfo,
           points: userPoints,
           hasAvatarFrame: userHasAvatarFrame,
-          hasEntranceAnimation: userHasEntranceAnimation
+          hasEntranceAnimation: userHasEntranceAnimation,
+          hasSvip: userHasSvip
         };
       });
 
@@ -303,9 +314,11 @@ module.exports = (io) => {
         }
       }
 
-      // 添加用户的头像框信息到消息对象
+      // 添加用户的头像框和SVIP信息到消息对象
       const userHasAvatarFrame = userInfo.coreId ? hasAvatarFrame(userInfo.coreId) : false;
+      const userHasSvip = userInfo.coreId ? hasSvip(userInfo.coreId) : false;
       processedMessage.hasAvatarFrame = userHasAvatarFrame;
+      processedMessage.hasSvip = userHasSvip;
 
       chatHistory.push(processedMessage);
       if (chatHistory.length > MAX_HISTORY) {
@@ -512,12 +525,14 @@ module.exports = (io) => {
           const userPoints = userInfo.coreId ? getUserPoints(userInfo.coreId) : 0;
           const userHasAvatarFrame = userInfo.coreId ? hasAvatarFrame(userInfo.coreId) : false;
           const userHasEntranceAnimation = userInfo.coreId ? hasEntranceAnimation(userInfo.coreId) : false;
+          const userHasSvip = userInfo.coreId ? hasSvip(userInfo.coreId) : false;
           
           return {
             ...userInfo,
             points: userPoints,
             hasAvatarFrame: userHasAvatarFrame,
-            hasEntranceAnimation: userHasEntranceAnimation
+            hasEntranceAnimation: userHasEntranceAnimation,
+            hasSvip: userHasSvip
           };
         });
         
@@ -564,9 +579,11 @@ module.exports = (io) => {
           const userInfo = userInfoMap.get(uid) || { userId: uid, username: null };
           // 获取每个用户的最新积分信息
           const userPoints = userInfo.coreId ? getUserPoints(userInfo.coreId) : 0;
+          const userHasSvip = userInfo.coreId ? hasSvip(userInfo.coreId) : false;
           return {
             ...userInfo,
-            points: userPoints
+            points: userPoints,
+            hasSvip: userHasSvip
           };
         });
         
@@ -695,7 +712,13 @@ module.exports = (io) => {
       
       // 更新用户列表
       const usersList = Array.from(onlineUsers.entries()).map(([sid, uid]) => {
-        return userInfoMap.get(uid) || { userId: uid, username: null };
+        const user = userInfoMap.get(uid) || { userId: uid, username: null };
+        const userHasSvip = user.coreId ? hasSvip(user.coreId) : false;
+        
+        return {
+          ...user,
+          hasSvip: userHasSvip
+        };
       });
       
       io.emit("user_list_updated", usersList);
@@ -768,12 +791,14 @@ module.exports = (io) => {
           const userPoints = user.coreId ? getUserPoints(user.coreId) : 0;
           const userHasAvatarFrame = user.coreId ? hasAvatarFrame(user.coreId) : false;
           const userHasEntranceAnimation = user.coreId ? hasEntranceAnimation(user.coreId) : false;
+          const userHasSvip = user.coreId ? hasSvip(user.coreId) : false;
           
           return {
             ...user,
             points: userPoints,
             hasAvatarFrame: userHasAvatarFrame,
-            hasEntranceAnimation: userHasEntranceAnimation
+            hasEntranceAnimation: userHasEntranceAnimation,
+            hasSvip: userHasSvip
           };
         });
         
@@ -884,12 +909,14 @@ module.exports = (io) => {
               const userPoints = user.coreId ? getUserPoints(user.coreId) : 0;
               const userHasAvatarFrame = user.coreId ? hasAvatarFrame(user.coreId) : false;
               const userHasEntranceAnimation = user.coreId ? hasEntranceAnimation(user.coreId) : false;
+              const userHasSvip = user.coreId ? hasSvip(user.coreId) : false;
               
               return {
                 ...user,
                 points: userPoints,
                 hasAvatarFrame: userHasAvatarFrame,
-                hasEntranceAnimation: userHasEntranceAnimation
+                hasEntranceAnimation: userHasEntranceAnimation,
+                hasSvip: userHasSvip
               };
             });
             
@@ -1136,11 +1163,14 @@ module.exports = (io) => {
           const userPoints = user.coreId ? getUserPoints(user.coreId) : 0;
           const userHasAvatarFrame = user.coreId ? hasAvatarFrame(user.coreId) : false;
           const userHasEntranceAnimation = user.coreId ? hasEntranceAnimation(user.coreId) : false;
+          const userHasSvip = user.coreId ? hasSvip(user.coreId) : false;
+          
           return {
             ...user,
             points: userPoints,
             hasAvatarFrame: userHasAvatarFrame,
-            hasEntranceAnimation: userHasEntranceAnimation
+            hasEntranceAnimation: userHasEntranceAnimation,
+            hasSvip: userHasSvip
           };
         });
 
@@ -1165,12 +1195,14 @@ module.exports = (io) => {
         const userPoints = user.coreId ? getUserPoints(user.coreId) : 0;
         const userHasAvatarFrame = user.coreId ? hasAvatarFrame(user.coreId) : false;
         const userHasEntranceAnimation = user.coreId ? hasEntranceAnimation(user.coreId) : false;
+        const userHasSvip = user.coreId ? hasSvip(user.coreId) : false;
         
         return {
           ...user,
           points: userPoints,
           hasAvatarFrame: userHasAvatarFrame,
-          hasEntranceAnimation: userHasEntranceAnimation
+          hasEntranceAnimation: userHasEntranceAnimation,
+          hasSvip: userHasSvip
         };
       });
       

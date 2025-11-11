@@ -44,7 +44,10 @@
           <div class="user-info">
             <span class="username" :title="getDisplayUsername(user)">{{
               getDisplayUsername(user)
-            }}</span>
+            }}
+            <span v-if="hasSvip(user)" class="svip-tail">SVIP</span>
+            </span>
+            
             <div class="user-stats">
               <span class="hotness"> 🔥 {{ getMessageCount(user) }} </span>
               <span class="points"> 💰 {{ getUserPoints(user) }} </span>
@@ -139,6 +142,16 @@ export default {
       return typeof user === "object" && user.hasAvatarFrame === true;
     };
 
+    // 判断用户是否有SVIP特权
+    const hasSvip = (user) => {
+      // 如果是当前用户，检查mysteryShopInfo中的hasSvip
+      if (isCurrentUser(user)) {
+        return props.mysteryShopInfo?.hasSvip || false;
+      }
+      // 对于其他用户，检查用户对象中是否有hasSvip属性
+      return typeof user === "object" && user.hasSvip === true;
+    };
+
     // 计算排序后的用户列表，当前用户置顶，其余按热度排序
     const sortedUsers = computed(() => {
       // 确保输入数据是对象数组
@@ -199,6 +212,7 @@ export default {
       getDisplayUsername,
       isCurrentUser,
       hasAvatarFrame,
+      hasSvip,
       handleUserContextMenu,
     };
   },
@@ -572,6 +586,72 @@ export default {
 .theme-dark .points {
   background-color: rgba(var(--accent-primary-rgb), 0.15);
   color: rgba(var(--accent-primary-rgb), 0.9);
+}
+
+/* SVIP小尾巴样式 */
+.svip-tail {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #9333ea, #c026d3, #9333ea);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+  display: inline-block;
+  position: relative;
+  box-shadow: 0 0 5px rgba(147, 51, 234, 0.5);
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+  animation: svip-tail-glow 2s infinite alternate;
+}
+
+/* SVIP小尾巴装饰元素 */
+.svip-tail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.svip-tail::after {
+  content: '✨';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  font-size: 8px;
+  z-index: 2;
+  animation: svip-tail-sparkle 1.5s infinite;
+}
+
+/* 暗黑模式下的SVIP小尾巴 */
+.theme-dark .svip-tail {
+  background: linear-gradient(135deg, #a855f7, #d946ef, #a855f7);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.7);
+}
+
+/* SVIP小尾巴动画 */
+@keyframes svip-tail-glow {
+  0% {
+    box-shadow: 0 0 5px rgba(147, 51, 234, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(147, 51, 234, 0.8);
+  }
+}
+
+@keyframes svip-tail-sparkle {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
 }
 
 .skeleton-container {

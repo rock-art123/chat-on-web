@@ -869,6 +869,19 @@ export default {
             console.log('Chat: user_mentioned事件已派发');
           }
           
+          // 如果是SVIP用户的消息，触发宠物提示事件（不播放提示音）
+          if (message.hasSvip) {
+            console.log('Chat: 准备触发svip_message事件，用户名:', message.username);
+            const svipEvent = new CustomEvent('svip_message', {
+              detail: {
+                username: message.username,
+                content: getNotificationBody(message)
+              }
+            });
+            window.dispatchEvent(svipEvent);
+            console.log('Chat: svip_message事件已派发');
+          }
+          
           // 通知Electron主进程进行图标闪烁
           notifyNewMessage();
         }

@@ -75,8 +75,16 @@ const MYSTERY_REWARDS = [
     name: "精美头像框",
     description: "获得精美头像框3天使用权",
     duration: 3, // 天数
-    probability: 0.08, // 6%概率
+    probability: 0.08, // 8%概率
     type: "avatar_frame"
+  },
+  {
+    id: "svip",
+    name: "SVIP特权",
+    description: "获得SVIP特权7天使用权",
+    duration: 7, // 天数
+    probability: 0.08, // 8%概率
+    type: "svip"
   },
   {
     id: "entrance_animation",
@@ -91,7 +99,7 @@ const MYSTERY_REWARDS = [
     name: "200积分",
     description: "获得200积分奖励",
     points: 200,
-    probability: 0.15, // 20%概率
+    probability: 0.15, // 15%概率
     type: "points_reward"
   },
   {
@@ -99,7 +107,7 @@ const MYSTERY_REWARDS = [
     name: "500积分",
     description: "获得500积分奖励",
     points: 500,
-    probability: 0.05, // 15%概率
+    probability: 0.05, // 5%概率
     type: "points_reward"
   },
   {
@@ -107,7 +115,7 @@ const MYSTERY_REWARDS = [
     name: "1000积分",
     description: "获得1000积分奖励",
     points: 1000,
-    probability: 0.02, // 10%概率
+    probability: 0.02, // 2%概率
     type: "points_reward"
   },
   {
@@ -145,6 +153,42 @@ function processReward(coreId, reward) {
         message: "积分处理失败，已退还抽取费用"
       };
     }
+  }
+  
+  // 处理SVIP特权
+  if (reward.type === "svip") {
+    // 获取用户当前神秘商店数据
+    const userMysteryData = getUserMysteryData(coreId) || {};
+    const currentSvip = userMysteryData.svip || {};
+    
+    // 计算新的过期时间
+    const now = new Date();
+    let newExpiryDate = new Date();
+    newExpiryDate.setDate(now.getDate() + reward.duration);
+    
+    // 如果已有SVIP且未过期，则累加天数
+    if (currentSvip.expiryDate && new Date(currentSvip.expiryDate) > now) {
+      const currentExpiry = new Date(currentSvip.expiryDate);
+      newExpiryDate = new Date(currentExpiry.getTime() + reward.duration * 24 * 60 * 60 * 1000);
+    }
+    
+    // 更新用户SVIP数据
+    updateUserMysteryData(coreId, {
+      svip: {
+        hasSvip: true,
+        expiryDate: newExpiryDate.toISOString(),
+        type: "mystery_shop"
+      }
+    });
+    
+    return {
+      success: true,
+      reward: {
+        ...reward,
+        expiryDate: newExpiryDate.toISOString()
+      },
+      message: `恭喜！您抽中了SVIP特权，有效期至${newExpiryDate.toLocaleDateString()}`
+    };
   }
   
   // 处理头像框
@@ -302,6 +346,34 @@ function drawMysteryReward(coreId) {
   };
 }
 
+// 检查用户是否有SVIP特权
+function hasSvip(coreId) {
+  if (!coreId) return false;
+  
+  const userMysteryData = getUserMysteryData(coreId);
+  if (!userMysteryData || !userMysteryData.svip) {
+    return false;
+  }
+  
+  const now = new Date();
+  const expiryDate = new Date(userMysteryData.svip.expiryDate);
+  
+  // 检查是否过期
+  if (expiryDate <= now) {
+    // 如果已过期，清除数据
+    updateUserMysteryData(coreId, {
+      svip: {
+        hasSvip: false,
+        expiryDate: null,
+        type: null
+      }
+    });
+    return false;
+  }
+  
+  return true;
+}
+
 // 检查用户是否有头像框
 function hasAvatarFrame(coreId) {
   if (!coreId) return false;
@@ -365,6 +437,7 @@ function getUserMysteryShopInfo(coreId) {
   const userPoints = getUserPoints(coreId);
   const hasAvatar = hasAvatarFrame(coreId);
   const hasAnimation = hasEntranceAnimation(coreId);
+  const hasSvipStatus = hasSvip(coreId);
   const userMysteryData = getUserMysteryData(coreId) || {};
   
   return {
@@ -373,8 +446,10 @@ function getUserMysteryShopInfo(coreId) {
     canDraw: userPoints >= 100,
     avatarFrame: userMysteryData.avatarFrame || null,
     entranceAnimation: userMysteryData.entranceAnimation || null,
+    svip: userMysteryData.svip || null,
     hasAvatarFrame: hasAvatar,
-    hasEntranceAnimation: hasAnimation
+    hasEntranceAnimation: hasAnimation,
+    hasSvip: hasSvipStatus
   };
 }
 
@@ -383,6 +458,7 @@ module.exports = {
   drawMysteryReward,
   hasAvatarFrame,
   hasEntranceAnimation,
+  hasSvip,
   getUserMysteryShopInfo,
   getUserMysteryData,
   updateUserMysteryData,

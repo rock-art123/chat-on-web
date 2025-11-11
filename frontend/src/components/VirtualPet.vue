@@ -8,6 +8,9 @@
       <div v-if="showMentionMessage" class="pet-bubble mention-bubble" :style="mentionMessageStyle" @click.stop="hideMentionMessage">
         {{ mentionMessage }}
       </div>
+      <div v-if="showSvipMessage" class="pet-bubble svip-bubble" :style="svipMessageStyle" @click.stop="hideSvipMessage">
+        {{ svipMessage }}
+      </div>
       <div v-if="showPointsAnimation" class="points-animation">
         +{{ pointsEarned }}
       </div>
@@ -350,6 +353,12 @@ const mentionMessageStyle = ref({});
 let mentionTimeout = null;
 let lastNoticeTime = 0; // 记录上次播放通知音的时间
 
+// SVIP消息相关
+const showSvipMessage = ref(false);
+const svipMessage = ref('');
+const svipMessageStyle = ref({});
+let svipTimeout = null;
+
 // 每日积分赠送限制
 const dailyPointsCount = ref(0);
 const maxDailyPoints = 10;
@@ -437,6 +446,15 @@ function hideMentionMessage() {
   }
 }
 
+// 隐藏SVIP消息的气泡
+function hideSvipMessage() {
+  showSvipMessage.value = false;
+  if (svipTimeout) {
+    clearTimeout(svipTimeout);
+    svipTimeout = null;
+  }
+}
+
 // 显示被提及的气泡消息
 function showMentionBubble(username, content) {
   console.log('VirtualPet: showMentionBubble被调用，username =', username, 'content =', content);
@@ -501,6 +519,63 @@ function showMentionBubble(username, content) {
     showMentionMessage.value = false;
     console.log('VirtualPet: 气泡自动隐藏');
   }, 10000);
+}
+
+// 显示SVIP消息的气泡（不播放提示音）
+function showSvipMessageBubble(username, content) {
+  console.log('VirtualPet: showSvipMessageBubble被调用，username =', username, 'content =', content);
+  console.log('VirtualPet: petEnabled.value =', petEnabled.value);
+  
+  if (!petEnabled.value) {
+    console.log('VirtualPet: 宠物未启用，不显示SVIP消息气泡');
+    return;
+  }
+  
+  // 清除之前的定时器
+  if (svipTimeout) {
+    clearTimeout(svipTimeout);
+  }
+  
+  // 设置SVIP消息，包含具体消息内容
+  svipMessage.value = `尊贵的SVIP用户${username}说：${content}`;
+  showSvipMessage.value = true;
+  console.log('VirtualPet: showSvipMessage设置为true');
+  
+  // 计算气泡位置（避免超出屏幕）
+  setTimeout(() => {
+    if (petElement.value) {
+      const petRect = petElement.value.getBoundingClientRect();
+      const bubbleWidth = 240; // 预估气泡宽度，比普通气泡稍宽
+      const bubbleHeight = 60; // 预估气泡高度
+      
+      let left = -bubbleWidth / 2 + 40; // 默认居中偏左
+      let bottom = 120; // 默认在宠物上方，比提及气泡稍高
+      
+      // 如果气泡会超出左边界
+      if (petRect.left + left < 10) {
+        left = 10 - petRect.left;
+      }
+      
+      // 如果气泡会超出右边界
+      if (petRect.right + left > window.innerWidth - 10) {
+        left = window.innerWidth - 10 - petRect.right;
+      }
+      
+      svipMessageStyle.value = {
+        left: `${left}px`,
+        bottom: `${bottom}px`
+      };
+      console.log('VirtualPet: SVIP气泡位置设置完成', svipMessageStyle.value);
+    }
+  }, 10);
+  
+  // 不播放提示音，只显示气泡
+  
+  // 8秒后自动隐藏气泡
+  svipTimeout = setTimeout(() => {
+    showSvipMessage.value = false;
+    console.log('VirtualPet: SVIP气泡自动隐藏');
+  }, 8000);
 }
 
 // 处理宠物点击
@@ -628,6 +703,14 @@ const handleUserMentioned = (event) => {
   showMentionBubble(username, content);
 };
 
+// 监听SVIP消息事件
+const handleSvipMessage = (event) => {
+  console.log('VirtualPet: 收到svip_message事件', event.detail);
+  console.log('VirtualPet: petEnabled.value =', petEnabled.value);
+  const { username, content } = event.detail;
+  showSvipMessageBubble(username, content);
+};
+
 // 组件挂载时
 onMounted(() => {
   initPetSettings();
@@ -636,6 +719,7 @@ onMounted(() => {
   window.addEventListener('petToggle', handlePetToggle);
   window.addEventListener('petStyleChange', handlePetStyleChange);
   window.addEventListener('user_mentioned', handleUserMentioned);
+  window.addEventListener('svip_message', handleSvipMessage);
   
   // 确保socket连接可用
   if (!window.socket) {
@@ -667,12 +751,16 @@ onUnmounted(() => {
   window.removeEventListener('petToggle', handlePetToggle);
   window.removeEventListener('petStyleChange', handlePetStyleChange);
   window.removeEventListener('user_mentioned', handleUserMentioned);
+  window.removeEventListener('svip_message', handleSvipMessage);
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
   
   // 清除定时器
   if (mentionTimeout) {
     clearTimeout(mentionTimeout);
+  }
+  if (svipTimeout) {
+    clearTimeout(svipTimeout);
   }
   
   // 移除socket事件监听
@@ -733,6 +821,37 @@ onUnmounted(() => {
   border: 1px solid #ffeeba;
   cursor: pointer;
   max-width: 220px;
+}
+
+.svip-bubble {
+  background: linear-gradient(135deg, #9333ea, #a855f7, #c084fc);
+  color: #fff;
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  cursor: pointer;
+  max-width: 240px;
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.svip-bubble::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: svip-bubble-shine 3s infinite;
+}
+
+@keyframes svip-bubble-shine {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
 }
 
 .pet-bubble::after {
