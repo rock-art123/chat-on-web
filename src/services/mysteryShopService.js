@@ -75,7 +75,7 @@ const MYSTERY_REWARDS = [
     name: "精美头像框",
     description: "获得精美头像框3天使用权",
     duration: 3, // 天数
-    probability: 0.08, // 8%概率
+    probability: 0.1569, // 占中奖概率的15.69%
     type: "avatar_frame"
   },
   {
@@ -83,7 +83,7 @@ const MYSTERY_REWARDS = [
     name: "SVIP特权",
     description: "获得SVIP特权3天使用权",
     duration: 3, // 天数
-    probability: 0.08, // 8%概率
+    probability: 0.1569, // 占中奖概率的15.69%
     type: "svip"
   },
   {
@@ -91,7 +91,7 @@ const MYSTERY_REWARDS = [
     name: "登录出场炫酷动画",
     description: "获得登录出场炫酷动画3天使用权",
     duration: 3, // 天数
-    probability: 0.08, // 8%概率
+    probability: 0.1569, // 占中奖概率的15.69%
     type: "entrance_animation"
   },
   {
@@ -99,7 +99,7 @@ const MYSTERY_REWARDS = [
     name: "200积分",
     description: "获得200积分奖励",
     points: 200,
-    probability: 0.15, // 15%概率
+    probability: 0.2941, // 占中奖概率的29.41%
     type: "points_reward"
   },
   {
@@ -107,7 +107,7 @@ const MYSTERY_REWARDS = [
     name: "500积分",
     description: "获得500积分奖励",
     points: 500,
-    probability: 0.05, // 5%概率
+    probability: 0.0980, // 占中奖概率的9.80%
     type: "points_reward"
   },
   {
@@ -115,21 +115,21 @@ const MYSTERY_REWARDS = [
     name: "1000积分",
     description: "获得1000积分奖励",
     points: 1000,
-    probability: 0.02, // 2%概率
+    probability: 0.0392, // 占中奖概率的3.92%
     type: "points_reward"
   },
   {
     id: "black_bomb",
     name: "黑色炸弹",
     description: "损失200积分，如果不足200，则扣到0积分",
-    probability: 0.05, // 5%概率
+    probability: 0.0980, // 占中奖概率的9.80%
     type: "punishment"
   }
 ];
 
 // 计算总概率，用于验证
 const TOTAL_PROBABILITY = MYSTERY_REWARDS.reduce((sum, reward) => sum + reward.probability, 0);
-console.log(`神秘商店总概率: ${TOTAL_PROBABILITY * 100}% (未中奖概率: ${(1 - TOTAL_PROBABILITY) * 100}%)`);
+console.log(`神秘商店奖励概率总和: ${(TOTAL_PROBABILITY * 100).toFixed(2)}% (应该为100%)`);
 
 // 处理奖励的函数
 function processReward(coreId, reward) {
@@ -384,33 +384,50 @@ function drawMysteryReward(coreId) {
   
   console.log(`[MYSTERY_SHOP] 积分扣除成功:`, { coreId, deductedPoints: 100, remainingPoints: getUserPoints(coreId) });
   
-  // 使用正确的概率算法
-  const random = Math.random(); // 生成0-1之间的随机数
-  let cumulativeProbability = 0;
+  // 生成0-100的随机数
+  const random = Math.random() * 100; // 生成0-100之间的随机数
   
   console.log(`[MYSTERY_SHOP] 抽奖随机数:`, { coreId, random });
+  
+  // 首先判断是否中奖（50%概率）
+  if (random >= 35) {
+    // 未中奖
+    console.log(`[MYSTERY_SHOP] 用户未中奖:`, { coreId, random });
+    return {
+      success: true,
+      reward: null,
+      message: "很遗憾，您没有抽中任何礼物"
+    };
+  }
+  
+  // 中奖了，根据概率分配奖品
+  let cumulativeProbability = 0;
   
   // 计算累积概率并判断中奖
   for (const rewardType of MYSTERY_REWARDS) {
     cumulativeProbability += rewardType.probability;
+    // 将累积概率转换为0-50范围内的值
+    const adjustedCumulativeProbability = cumulativeProbability * 50;
+    
     console.log(`[MYSTERY_SHOP] 检查奖励:`, { 
       coreId, 
       rewardType: rewardType.name, 
       probability: rewardType.probability, 
       cumulativeProbability,
+      adjustedCumulativeProbability,
       random,
-      result: random < cumulativeProbability ? '中奖' : '未中'
+      result: random < adjustedCumulativeProbability ? '中奖' : '未中'
     });
     
-    if (random < cumulativeProbability) {
+    if (random < adjustedCumulativeProbability) {
       // 中奖了，处理奖励
       console.log(`[MYSTERY_SHOP] 用户中奖:`, { coreId, rewardType: rewardType.name });
       return processReward(coreId, rewardType);
     }
   }
   
-  // 如果没有中任何奖励，返回未中奖
-  console.log(`[MYSTERY_SHOP] 用户未中奖:`, { coreId, random });
+  // 如果没有匹配到任何奖励（理论上不应该发生），返回未中奖
+  console.log(`[MYSTERY_SHOP] 未匹配到任何奖励，返回未中奖:`, { coreId, random });
   return {
     success: true,
     reward: null,
