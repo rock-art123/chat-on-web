@@ -579,10 +579,15 @@ module.exports = (io) => {
           const userInfo = userInfoMap.get(uid) || { userId: uid, username: null };
           // 获取每个用户的最新积分信息
           const userPoints = userInfo.coreId ? getUserPoints(userInfo.coreId) : 0;
+          const userHasAvatarFrame = userInfo.coreId ? hasAvatarFrame(userInfo.coreId) : false;
+          const userHasEntranceAnimation = userInfo.coreId ? hasEntranceAnimation(userInfo.coreId) : false;
           const userHasSvip = userInfo.coreId ? hasSvip(userInfo.coreId) : false;
+          
           return {
             ...userInfo,
             points: userPoints,
+            hasAvatarFrame: userHasAvatarFrame,
+            hasEntranceAnimation: userHasEntranceAnimation,
             hasSvip: userHasSvip
           };
         });
