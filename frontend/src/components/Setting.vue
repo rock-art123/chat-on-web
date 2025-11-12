@@ -371,6 +371,108 @@
         </div>
       </el-card>
       
+      <!-- 抽奖概率设置卡片 -->
+      <el-card class="setting-card mystery-shop-card" shadow="hover" v-if="isElectron() && adminSettings.adminMode">
+        <template #header>
+          <div class="card-header">
+            <div class="header-icon">
+              <el-icon><PresentIcon /></el-icon>
+            </div>
+            <div class="header-content">
+              <h3>抽奖概率设置</h3>
+              <p>设置神秘商店抽奖概率阈值</p>
+            </div>
+            <div class="header-actions">
+              <el-button 
+                v-if="!isEditingMysteryShop" 
+                type="primary" 
+                @click="startEditingMysteryShop" 
+                class="edit-btn"
+                size="small"
+              >
+                <el-icon><EditIcon /></el-icon>
+                编辑
+              </el-button>
+              <div v-else class="edit-actions">
+                <el-button 
+                  type="success" 
+                  @click="saveMysteryShopSettings" 
+                  :loading="mysteryShopSaving"
+                  size="small"
+                >
+                  <el-icon><CheckIcon /></el-icon>
+                  保存
+                </el-button>
+                <el-button @click="cancelEditingMysteryShop" size="small">
+                  <el-icon><CloseIcon /></el-icon>
+                  取消
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </template>
+        
+        <div class="card-content">
+          <!-- 只读模式：显示当前抽奖概率设置 -->
+          <div v-if="!isEditingMysteryShop" class="info-display">
+            <div class="info-item">
+              <div class="info-label">
+                <el-icon><PresentIcon /></el-icon>
+                <span>抽奖概率阈值</span>
+              </div>
+              <div class="info-value">{{ mysteryShopSettings.probability }}%</div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">
+                <el-icon><InfoIcon /></el-icon>
+                <span>中奖概率</span>
+              </div>
+              <div class="info-value">{{ mysteryShopSettings.probability }}%</div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">
+                <el-icon><InfoIcon /></el-icon>
+                <span>说明</span>
+              </div>
+              <div class="info-value">随机数小于此值时中奖</div>
+            </div>
+          </div>
+          
+          <!-- 编辑模式：显示表单 -->
+          <el-form 
+            v-else
+            ref="mysteryShopForm"
+            :model="tempMysteryShopSettings"
+            label-position="top"
+            class="compact-form"
+            size="default"
+          >
+            <el-form-item 
+              label="抽奖概率阈值 (%)"
+              prop="probability"
+              :rules="[
+                { required: true, message: '请输入抽奖概率阈值', trigger: 'blur' },
+                { type: 'number', min: 1, max: 100, message: '抽奖概率阈值必须在1-100之间', trigger: 'blur' }
+              ]"
+            >
+              <el-input-number 
+                v-model="tempMysteryShopSettings.probability" 
+                :min="1" 
+                :max="100"
+                :step="1"
+                controls-position="right"
+                class="w-full"
+              />
+              <div class="form-help-text">
+                设置抽奖概率阈值，随机数小于此值时中奖。例如：35表示35%的中奖概率。
+              </div>
+            </el-form-item>
+          </el-form>
+        </div>
+      </el-card>
+      
       <!-- 动画和提示音设置卡片 -->
       <el-card class="setting-card animation-sound-card" shadow="hover">
         <template #header>
@@ -536,7 +638,8 @@ import {
   Monitor as MonitorIcon,
   List as ListIcon,
   Delete as DeleteIcon,
-  Plus as PlusIcon
+  Plus as PlusIcon,
+  Present as GiftIcon
 } from '@element-plus/icons-vue';
 
 export default {
@@ -559,7 +662,8 @@ export default {
     MonitorIcon,
     ListIcon,
     DeleteIcon,
-    PlusIcon
+    PlusIcon,
+    GiftIcon
   },
   emits: ['close', 'settings-changed'],
   setup(props, { emit }) {
@@ -577,6 +681,9 @@ export default {
     const aiConfigForm = ref(null);
     const aiSaving = ref(false);
     const isEditingAi = ref(false);
+    
+    // 抽奖概率设置相关状态
+    const mysteryShopForm = ref(null);
     
     // 网站导航设置数据模型
     const frameSites = ref([
@@ -650,6 +757,10 @@ export default {
     const versionClickCount = ref(0);
     let versionClickTimer = null;
     
+    // 抽奖概率设置编辑状态
+    const isEditingMysteryShop = ref(false);
+    const mysteryShopSaving = ref(false);
+    
     // 应用版本号
     const appVersion = ref(import.meta.env.VITE_APP_VERSION);
     
@@ -663,6 +774,16 @@ export default {
     
     // 临时AI配置，用于编辑模式
     const tempAiConfig = reactive({});
+    
+    // 抽奖概率设置数据模型
+    const mysteryShopSettings = reactive({
+      probability: 35 // 默认抽奖概率为35%
+    });
+    
+    // 临时抽奖概率设置，用于编辑模式
+    const tempMysteryShopSettings = reactive({
+      probability: 35
+    });
     
     // 可用的AI模型选项
     const availableModelOptions = ref([
@@ -731,6 +852,7 @@ export default {
       loadAnimationSoundSettings(); // 加载动画和提示音设置
       loadFrameSettings(); // 加载网站导航设置
       loadAiConfig(); // 加载AI配置
+      loadMysteryShopSettings(); // 加载抽奖概率设置
       
       // 监听管理员模式变更事件
       window.addEventListener('admin-mode-changed', handleAdminModeChange);
@@ -741,6 +863,9 @@ export default {
         
         // 监听积分更新事件
         window.socket.on("points_updated", handlePointsUpdated);
+        
+        // 监听抽奖概率更新事件
+        window.socket.on("mystery-shop-probability-updated", handleMysteryShopProbabilityUpdated);
       }
     });
     
@@ -750,6 +875,7 @@ export default {
       if (window.io && window.socket) {
         window.socket.off("ai-config-updated", handleAiConfigUpdate);
         window.socket.off("points_updated", handlePointsUpdated);
+        window.socket.off("mystery-shop-probability-updated", handleMysteryShopProbabilityUpdated);
       }
     });
     
@@ -767,6 +893,13 @@ export default {
     // 处理AI配置更新事件
     const handleAiConfigUpdate = (updatedConfig) => {
       Object.assign(aiConfig, updatedConfig);
+    };
+    
+    // 处理抽奖概率更新事件
+    const handleMysteryShopProbabilityUpdated = (data) => {
+      mysteryShopSettings.probability = data.probability || 35;
+      tempMysteryShopSettings.probability = data.probability || 35;
+      ElMessage.success('抽奖概率已更新');
     };
     
     // 处理管理员模式变更事件
@@ -940,6 +1073,39 @@ export default {
       }
     };
     
+    // 加载抽奖概率设置
+    const loadMysteryShopSettings = async () => {
+      try {
+        // 检查是否在Electron环境中
+        const isElectronEnv = window.electronAPI || navigator.userAgent.toLowerCase().indexOf('electron') > -1;
+        
+        // 在Electron环境中，直接使用本地API
+        const apiUrl = isElectronEnv ? '/api/mystery-shop-probability' : 'http://localhost:3000/api/mystery-shop-probability';
+        
+        const userId = getUserId();
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            "x-user-id": userId,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          mysteryShopSettings.probability = data.data.probability || 35;
+          tempMysteryShopSettings.probability = data.data.probability || 35;
+        } else {
+          console.error('加载抽奖概率设置失败:', data.message);
+        }
+      } catch (error) {
+        console.error('加载抽奖概率设置异常:', error);
+      }
+    };
+    
     // 开始编辑
     const startEditing = () => {
       isEditing.value = true;
@@ -979,6 +1145,75 @@ export default {
     // 取消编辑AI配置
     const cancelEditingAi = () => {
       isEditingAi.value = false;
+    };
+    
+    // 开始编辑抽奖概率设置
+    const startEditingMysteryShop = () => {
+      isEditingMysteryShop.value = true;
+      // 重置临时设置为当前设置
+      tempMysteryShopSettings.probability = mysteryShopSettings.probability;
+    };
+    
+    // 取消编辑抽奖概率设置
+    const cancelEditingMysteryShop = () => {
+      isEditingMysteryShop.value = false;
+      // 重置临时设置为当前设置
+      tempMysteryShopSettings.probability = mysteryShopSettings.probability;
+    };
+    
+    // 保存抽奖概率设置
+    const saveMysteryShopSettings = async () => {
+      mysteryShopSaving.value = true;
+      
+      try {
+        // 验证概率值
+        if (tempMysteryShopSettings.probability < 1 || tempMysteryShopSettings.probability > 100) {
+          ElMessage.error('抽奖概率必须在1-100之间');
+          return;
+        }
+        
+        // 检查是否在Electron环境中
+        const isElectronEnv = window.electronAPI || navigator.userAgent.toLowerCase().indexOf('electron') > -1;
+        
+        // 在Electron环境中，直接使用本地API
+        const apiUrl = isElectronEnv ? '/api/mystery-shop-probability' : 'http://localhost:3000/api/mystery-shop-probability';
+        
+        const userId = getUserId();
+        
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": userId
+          },
+          body: JSON.stringify({
+            probability: tempMysteryShopSettings.probability
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          // 更新实际设置
+          mysteryShopSettings.probability = data.data.probability;
+          
+          // 退出编辑模式
+          isEditingMysteryShop.value = false;
+          
+          // 显示保存成功提示
+          ElMessage.success('抽奖概率设置保存成功');
+        } else {
+          ElMessage.error(`抽奖概率设置失败: ${data.message}`);
+        }
+      } catch (error) {
+        console.error('保存抽奖概率设置异常:', error);
+        ElMessage.error('保存抽奖概率设置失败');
+      } finally {
+        mysteryShopSaving.value = false;
+      }
     };
     
     // 开始编辑动画和提示音设置
@@ -1348,7 +1583,10 @@ export default {
       isEditingCore,
       isEditingAnimationSound,
       isEditingFrame,
+      isEditingAi,
+      isEditingMysteryShop,
       frameSaving,
+      mysteryShopSaving,
       musicSettings,
       tempMusicSettings,
       coreSettings,
@@ -1359,6 +1597,8 @@ export default {
       frameSites,
       tempFrameSettings,
       currentFrameSiteName,
+      mysteryShopSettings,
+      tempMysteryShopSettings,
       musicSources,
       currentMusicSourceName,
       startEditing,
@@ -1382,7 +1622,6 @@ export default {
       // AI配置相关
       aiConfigForm,
       aiSaving,
-      isEditingAi,
       aiConfig,
       tempAiConfig,
       availableModelOptions,
@@ -1393,7 +1632,13 @@ export default {
       handleAiConfigUpdate,
       handlePointsUpdated,
       loadUserPoints,
-      updateUserPoints
+      updateUserPoints,
+      // 抽奖概率设置相关
+      startEditingMysteryShop,
+      cancelEditingMysteryShop,
+      saveMysteryShopSettings,
+      loadMysteryShopSettings,
+      handleMysteryShopProbabilityUpdated
     };
   }
 };

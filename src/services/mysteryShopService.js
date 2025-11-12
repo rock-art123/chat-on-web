@@ -350,6 +350,23 @@ function processReward(coreId, reward) {
   }
 }
 
+// 存储当前抽奖概率的变量
+let currentMysteryShopProbability = 40; // 默认值
+
+// 获取当前抽奖概率
+function getCurrentMysteryShopProbability() {
+  return currentMysteryShopProbability;
+}
+
+// 设置当前抽奖概率
+function setCurrentMysteryShopProbability(probability) {
+  if (probability >= 1 && probability <= 100) {
+    currentMysteryShopProbability = probability;
+    return true;
+  }
+  return false;
+}
+
 // 抽取神秘礼物
 function drawMysteryReward(coreId) {
   console.log(`[MYSTERY_SHOP] 开始抽取神秘礼物:`, { coreId });
@@ -389,10 +406,13 @@ function drawMysteryReward(coreId) {
   
   console.log(`[MYSTERY_SHOP] 抽奖随机数:`, { coreId, random });
   
-  // 首先判断是否中奖（50%概率）
-  if (random >= 35) {
-    // 未中奖
-    console.log(`[MYSTERY_SHOP] 用户未中奖:`, { coreId, random });
+  // 获取当前抽奖概率
+  const probability = getCurrentMysteryShopProbability();
+  
+  // 首先判断是否中奖
+  if (random >= probability) {
+      // 未中奖
+    console.log(`[MYSTERY_SHOP] 用户未中奖:`, { coreId, random, probability });
     return {
       success: true,
       reward: null,
@@ -406,8 +426,8 @@ function drawMysteryReward(coreId) {
   // 计算累积概率并判断中奖
   for (const rewardType of MYSTERY_REWARDS) {
     cumulativeProbability += rewardType.probability;
-    // 将累积概率转换为0-50范围内的值
-    const adjustedCumulativeProbability = cumulativeProbability * 50;
+    // 将累积概率转换为0-probability范围内的值
+    const adjustedCumulativeProbability = cumulativeProbability * probability;
     
     console.log(`[MYSTERY_SHOP] 检查奖励:`, { 
       coreId, 
@@ -545,6 +565,8 @@ function getUserMysteryShopInfo(coreId) {
 // 导出所有功能
 module.exports = {
   drawMysteryReward,
+  getCurrentMysteryShopProbability,
+  setCurrentMysteryShopProbability,
   hasAvatarFrame,
   hasEntranceAnimation,
   hasSvip,

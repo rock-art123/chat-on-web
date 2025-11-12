@@ -445,4 +445,78 @@ router.post('/user-points', validateUserId, (req, res) => {
   }
 });
 
+// 获取神秘商店抽奖概率API
+router.get('/mystery-shop-probability', validateUserId, (req, res) => {
+  try {
+    // 从mysteryShopService中获取当前抽奖概率
+    const { getCurrentMysteryShopProbability } = require('../services/mysteryShopService');
+    const probability = getCurrentMysteryShopProbability();
+    
+    res.json({
+      success: true,
+      data: {
+        probability: probability
+      }
+    });
+  } catch (error) {
+    console.error("获取神秘商店抽奖概率失败:", error);
+    res.status(500).json({
+      success: false,
+      message: "服务器错误"
+    });
+  }
+});
+
+// 修改神秘商店抽奖概率API
+router.post('/mystery-shop-probability', validateUserId, (req, res) => {
+  try {
+    const { probability } = req.body;
+    
+    if (probability === undefined || isNaN(probability)) {
+      return res.status(400).json({
+        success: false,
+        message: "概率必须是数字"
+      });
+    }
+    
+    if (probability < 1 || probability > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "概率必须在1-100之间"
+      });
+    }
+    
+    // 使用mysteryShopService中的函数设置概率
+    const { setCurrentMysteryShopProbability } = require('../services/mysteryShopService');
+    const success = setCurrentMysteryShopProbability(probability);
+    
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        message: "设置概率失败"
+      });
+    }
+    
+    // 通知所有客户端抽奖概率已更新
+    const io = req.app.get('io');
+    io.emit('mystery-shop-probability-updated', {
+      probability: probability
+    });
+    
+    res.json({
+      success: true,
+      message: "抽奖概率设置成功",
+      data: {
+        probability: probability
+      }
+    });
+  } catch (error) {
+    console.error("修改神秘商店抽奖概率失败:", error);
+    res.status(500).json({
+      success: false,
+      message: "服务器错误"
+    });
+  }
+});
+
 module.exports = router;
